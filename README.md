@@ -1,5 +1,4 @@
 # Rate-Limited URL Shortener with Analytics
-
 Snip is a full-stack URL shortener with an HTTP API that generates 6-character SHA-256 aliases, stores data in SQLite, and serves permanent redirects. A Fixed Window rate limiter (5 req/IP/60s) guards the shorten endpoint. A React dashboard lists URLs and visualizes 7-day click analytics via Chart.js.
 ---
 
@@ -85,16 +84,16 @@ Shorten a long URL.
 
 **Request body:**
 ```json
-{ "url": "https://example.com/very/long/path" }
+{ "url": "https://www.google.com/" }
 ```
 
 **Response `201 Created`:**
 ```json
 {
-  "alias": "a3f9b2",
-  "short_url": "http://localhost:8000/a3f9b2",
-  "original_url": "https://example.com/very/long/path",
-  "created_at": "2026-06-05T10:00:00Z"
+    "alias": "9b5a6a",
+    "short_url": "http://localhost:8000/9b5a6a",
+    "original_url": "https://www.google.com/",
+    "created_at": "2026-06-06T05:27:27.973863+00:00"
 }
 ```
 
@@ -120,7 +119,7 @@ Redirects to the original URL (`302 Found`) and records a click.
 **Response `302`:** Redirects to original URL.
 **Response `404`:**
 ```json
-{ "error": "Alias 'xyz123' not found." }
+{ "error": "Alias '9b5a6a' not found." }
 ```
 
 ---
@@ -131,15 +130,15 @@ Returns all shortened URLs with total click counts.
 **Response `200 OK`:**
 ```json
 {
-  "urls": [
-    {
-      "alias": "a3f9b2",
-      "short_url": "http://localhost:8000/a3f9b2",
-      "original_url": "https://example.com/very/long/path",
-      "total_clicks": 14,
-      "created_at": "2026-06-05T10:00:00Z"
-    }
-  ]
+    "urls": [
+        {
+            "alias": "9b5a6a",
+            "short_url": "http://localhost:8000/9b5a6a",
+            "original_url": "https://www.google.com/",
+            "total_clicks": 1,
+            "created_at": "2026-06-06T05:27:27.973863+00:00"
+        }
+    ]
 }
 ```
 
@@ -151,14 +150,30 @@ Returns per-day click counts for the last 7 days.
 **Response `200 OK`:**
 ```json
 {
-  "alias": "a3f9b2",
-  "original_url": "https://example.com/very/long/path",
-  "short_url": "http://localhost:8000/a3f9b2",
-  "total_clicks": 14,
-  "analytics": {
-    "labels": ["May 30", "May 31", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05"],
-    "data":   [0, 3, 1, 4, 2, 0, 4]
-  }
+    "alias": "9b5a6a",
+    "original_url": "https://www.google.com/",
+    "short_url": "http://localhost:8000/9b5a6a",
+    "total_clicks": 1,
+    "analytics": {
+        "labels": [
+            "May 31",
+            "Jun 01",
+            "Jun 02",
+            "Jun 03",
+            "Jun 04",
+            "Jun 05",
+            "Jun 06"
+        ],
+        "data": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ]
+    }
 }
 ```
 
