@@ -29,46 +29,27 @@ export default function AnalyticsDashboard({ refreshTrigger }) {
   const [analytics, setAnalytics] = useState(null);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingChart, setLoadingChart] = useState(false);
-  const chartRef = useRef(null);
+  const [listError, setListError] = useState(null);
+  const [chartError, setChartError] = useState(null);
+
   const chartInstanceRef = useRef(null);
+  const canvasNodeRef = useRef(null);
 
-  const fetchURLs = useCallback(async () => {
-    setLoadingList(true);
-    const data = await listURLs();
-    setUrls(data);
-    setLoadingList(false);
-  }, []);
-
-  useEffect(() => {
-    fetchURLs();
-  }, [fetchURLs, refreshTrigger]);
-
-  const fetchAnalytics = useCallback(async (alias) => {
-    setLoadingChart(true);
-    const data = await getAnalytics(alias);
-    setAnalytics(data);
-    setLoadingChart(false);
-  }, []);
-
-  useEffect(() => {
-    if (selectedAlias) fetchAnalytics(selectedAlias);
-  }, [selectedAlias, fetchAnalytics]);
-
-  useEffect(() => {
-    if (!analytics || !chartRef.current) return;
-
+  const buildChart = useCallback((canvas, data) => {
     if (chartInstanceRef.current) {
       chartInstanceRef.current.destroy();
+      chartInstanceRef.current = null;
     }
+    if (!canvas || !data) return;
 
-    chartInstanceRef.current = new Chart(chartRef.current, {
+    chartInstanceRef.current = new Chart(canvas, {
       type: "line",
       data: {
-        labels: analytics.analytics.labels,
+        labels: data.analytics.labels,
         datasets: [
           {
             label: "Clicks",
-            data: analytics.analytics.data,
+            data: data.analytics.data,
             borderColor: "#6366f1",
             backgroundColor: "rgba(99,102,241,0.15)",
             pointBackgroundColor: "#6366f1",
@@ -91,11 +72,57 @@ export default function AnalyticsDashboard({ refreshTrigger }) {
         },
       },
     });
+  }, []);
 
+  useEffect(() => {
+    buildChart(canvasNodeRef.current, analytics);
+  }, [analytics, buildChart]);
+
+  useEffect(() => {
     return () => {
       chartInstanceRef.current?.destroy();
     };
-  }, [analytics]);
+  }, []);
+
+  const fetchURLList = useCallback(async () => {
+    setLoadingList(true);
+    setListError(null);
+    const { ok, urls: data, error } = await listURLs();
+    if (ok) {
+      setUrls(data);
+    } else {
+      setListError(error ?? "Failed to load URLs.");
+    }
+    setLoadingList(false);
+  }, []);
+
+  useEffect(() => {
+    fetchURLList();
+  }, [fetchURLList, refreshTrigger]);
+
+  const fetchAnalyticsData = useCallback(async (alias) => {
+    setLoadingChart(true);
+    setChartError(null);
+    setAnalytics(null);
+    const { ok, data, error } = await getAnalytics(alias);
+    if (ok) {
+      setAnalytics(data);
+    } else {
+      setChartError(error ?? "Failed to load analytics.");
+    }
+    setLoadingChart(false);
+  }, []);
+
+  useEffect(() => {
+    if (selectedAlias) {
+      fetchAnalyticsData(selectedAlias);
+    }
+  }, [selectedAlias, fetchAnalyticsData]);
+
+  function handleRefresh() {
+    fetchURLList();
+    if (selectedAlias) fetchAnalyticsData(selectedAlias);
+  }
 
   return (
     <section className="dashboard-card">
@@ -103,15 +130,17 @@ export default function AnalyticsDashboard({ refreshTrigger }) {
         <h2>Analytics Dashboard</h2>
         <button
           className="refresh-btn"
-          onClick={() => selectedAlias && fetchAnalytics(selectedAlias)}
-          disabled={!selectedAlias || loadingChart}
+          onClick={handleRefresh}
+          disabled={loadingList || loadingChart}
         >
-          {loadingChart ? "Refreshing…" : "↻ Refresh"}
+          {loadingList || loadingChart ? "Refreshing…" : "↻ Refresh"}
         </button>
       </div>
 
       {loadingList ? (
         <p className="muted">Loading URLs…</p>
+      ) : listError ? (
+        <p className="error-msg">⚠ {listError}</p>
       ) : urls.length === 0 ? (
         <p className="muted">No URLs shortened yet. Create one above!</p>
       ) : (
@@ -130,18 +159,29 @@ export default function AnalyticsDashboard({ refreshTrigger }) {
         </ul>
       )}
 
-      {selectedAlias && analytics && (
+      {selectedAlias && (
         <div className="chart-container">
           <h3>
             <code>{selectedAlias}</code> — last 7 days
-            <span className="total-badge">Total: {analytics.total_clicks}</span>
+            {analytics && (
+              <span className="total-badge">
+                Total: {analytics.total_clicks}
+              </span>
+            )}
           </h3>
-          <canvas ref={chartRef} />
-        </div>
-      )}
 
-      {selectedAlias && !analytics && !loadingChart && (
-        <p className="muted">Select a URL to see its analytics.</p>
+          {chartError && <p className="error-msg">⚠ {chartError}</p>}
+          {loadingChart && <p className="muted">Loading chart…</p>}
+
+          <canvas
+            ref={canvasNodeRef}
+            style={{ display: analytics && !loadingChart ? "block" : "none" }}
+          />
+
+          {!loadingChart && !analytics && !chartError && (
+            <p className="muted">Select a URL to view analytics.</p>
+          )}
+        </div>
       )}
     </section>
   );
