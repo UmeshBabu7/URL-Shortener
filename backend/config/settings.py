@@ -10,6 +10,8 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost").split(",")
 
+BASE_URL = config("BASE_URL", default="http://localhost:8000")
+
 
 # Application definition
 
@@ -24,6 +26,7 @@ INSTALLED_APPS = [
 
 THIRD_PART_APPS = [
     "rest_framework",
+    "corsheaders",
 ]
 LOCAL_APPS = ["shortener"]
 
@@ -31,6 +34,7 @@ INSTALLED_APPS += THIRD_PART_APPS + LOCAL_APPS
 
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -39,6 +43,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:5173,http://127.0.0.1:5173",
+).split(",")
 
 ROOT_URLCONF = "config.urls"
 
@@ -67,7 +76,6 @@ DATABASES = {
         config("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
     )
 }
-
 
 
 # Password validation
