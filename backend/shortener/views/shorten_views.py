@@ -1,5 +1,6 @@
 import hashlib
 import json
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -11,13 +12,31 @@ from ..models import ShortenedURL
 from ..rate_limiter import check_rate_limit, get_client_ip
 
 
+def is_valid_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+        return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
 def generate_alias(url: str) -> str:
+    candidates = []
     for salt in range(100):
         data = f"{url}{salt}".encode()
-        digest = hashlib.sha256(data).hexdigest()
-        alias = digest[:6]
-        if not ShortenedURL.objects.filter(alias=alias).exists():
+        alias = hashlib.sha256(data).hexdigest()[:6]
+        candidates.append((salt, alias))
+
+    taken = set(
+        ShortenedURL.objects.filter(alias__in=[a for _, a in candidates]).values_list(
+            "alias", flat=True
+        )
+    )
+
+    for _, alias in candidates:
+        if alias not in taken:
             return alias
+
     raise ValueError("Could not generate a unique alias after 100 attempts.")
 
 
@@ -46,11 +65,12 @@ class ShortenURLView(View):
         if not original_url:
             return JsonResponse({"error": "The 'url' field is required."}, status=400)
 
-        if not (
-            original_url.startswith("http://") or original_url.startswith("https://")
-        ):
+        if not is_valid_url(original_url):
             return JsonResponse(
-                {"error": "URL must start with http:// or https://"}, status=400
+                {
+                    "error": "URL must start with http:// or https:// and include a valid domain."
+                },
+                status=400,
             )
 
         existing = ShortenedURL.objects.filter(original_url=original_url).first()

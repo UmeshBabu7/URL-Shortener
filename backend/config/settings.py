@@ -12,6 +12,7 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost").split(","
 
 BASE_URL = config("BASE_URL", default="http://localhost:8000")
 
+APPEND_SLASH = False
 
 # Application definition
 
@@ -25,7 +26,6 @@ INSTALLED_APPS = [
 ]
 
 THIRD_PART_APPS = [
-    "rest_framework",
     "corsheaders",
 ]
 LOCAL_APPS = ["shortener"]
